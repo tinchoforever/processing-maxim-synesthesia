@@ -5,14 +5,30 @@
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
- 
+
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 
 var mtof = [0, 8.661957, 9.177024, 9.722718, 10.3, 10.913383, 11.562325, 12.25, 12.978271, 13.75, 14.567617, 15.433853, 16.351599, 17.323914, 18.354048, 19.445436, 20.601723, 21.826765, 23.124651, 24.5, 25.956543, 27.5, 29.135235, 30.867706, 32.703197, 34.647827, 36.708096, 38.890873, 41.203445, 43.65353, 46.249302, 49., 51.913086, 55., 58.27047, 61.735413, 65.406395, 69.295654, 73.416191, 77.781746, 82.406891, 87.30706, 92.498604, 97.998856, 103.826172, 110., 116.540939, 123.470825, 130.81279, 138.591309, 146.832382, 155.563492, 164.813782, 174.61412, 184.997208, 195.997711, 207.652344, 220., 233.081879, 246.94165, 261.62558, 277.182617, 293.664764, 311.126984, 329.627563, 349.228241, 369.994415, 391.995422, 415.304688, 440., 466.163757, 493.883301, 523.25116, 554.365234, 587.329529, 622.253967, 659.255127, 698.456482, 739.988831, 783.990845, 830.609375, 880., 932.327515, 987.766602, 1046.502319, 1108.730469, 1174.659058, 1244.507935, 1318.510254, 1396.912964, 1479.977661, 1567.981689, 1661.21875, 1760., 1864.655029, 1975.533203, 2093.004639, 2217.460938, 2349.318115, 2489.015869, 2637.020508, 2793.825928, 2959.955322, 3135.963379, 3322.4375, 3520., 3729.31, 3951.066406, 4186.009277, 4434.921875, 4698.63623, 4978.031738, 5274.041016, 5587.651855, 5919.910645, 6271.926758, 6644.875, 7040., 7458.620117, 7902.132812, 8372.018555, 8869.84375, 9397.272461, 9956.063477, 10548.082031, 11175.303711, 11839.821289, 12543.853516, 13289.75];
-var context = new webkitAudioContext();  
- frequencies = {
+var context = new webkitAudioContext();
+var noteColor = {
+  'C': { R:50, G: 0, B:0 },
+  'C#': { R:50, G: 0, B:0 },
+  'D':{ R:150, G: 20, B:10 },
+  'D#':{ R:150, G: 20, B:10 },
+  'E':{ R:170, G: 50, B:20 },
+  'F#':{ R:170, G: 60, B:30 },
+  'G':{ R:170, G: 60, B:100 },
+  'G#':{ R:170, G: 60, B:100 },
+  "A":{ R:150, G: 60, B:150 },
+  "A#":{ R:150, G: 100, B:150 },
+  "B": { R:200, G: 100, B:200 },
+};
+
+
+
+var frequencies = {
     'A0': 27.5,
     'A1': 55,
     'A2': 110,
@@ -294,7 +310,7 @@ function Maxim(t) {
         return (100+(flux/analyser.frequencyBinCount))*0.01;
       }
     }
-    
+
   var rafID = null;
   var tracks = null;
   var buflen = 1024;
@@ -351,7 +367,9 @@ function Maxim(t) {
     audio.centsOffFromPitch = function( frequency, note ) {
       return Math.floor( 1200 * Math.log( frequency / this.frequencyFromNoteNumber( note ))/Math.log(2) );
     }
-
+    audio.getColorForNote = function(note){
+      return noteColor[note];
+    }
     audio.updatePitch = function( time ) {
       var cycles = new Array;
       analyser.getByteTimeDomainData( buf );
@@ -390,15 +408,15 @@ function Maxim(t) {
     // confidence = num_cycles / num_possible_cycles = num_cycles / (audioContext.sampleRate/)
       var confidence = (num_cycles ? ((num_cycles/(pitch * buflen / context.sampleRate)) * 100) : 0);
 
-    
-      console.log( 
-        "Cycles: " + num_cycles + 
-        " - average length: " + sum + 
-        " - pitch: " + pitch + "Hz " +
-        " - note: " + this.noteFromPitch( pitch ) +
-        " - confidence: " + confidence + "% "
-        );
-    
+
+      // console.log(
+      //   "Cycles: " + num_cycles +
+      //   " - average length: " + sum +
+      //   " - pitch: " + pitch + "Hz " +
+      //   " - note: " + this.noteFromPitch( pitch ) +
+      //   " - confidence: " + confidence + "% "
+      //   );
+
       // possible other approach to confidence: sort the array, take the median; go through the array and compute the average deviation
 
       //detectorElem.className = (confidence>50)?"confident":"vague"
@@ -424,8 +442,20 @@ function Maxim(t) {
             //detuneElem.className = "sharp";
          // detuneAmount.innerText = Math.abs( detune );
         }
-        console.log(pitch, note,  noteStrings[note%12], context.sampleRate );
-        return note;
+        var full;
+        if (confidence > 1){
+          var full = {
+                pitch:pitch,
+                note:note,
+                noteName: noteStrings[note%12],
+                octave:Math.floor(note/12),
+                octaveRaw:note/12,
+                confidence: confidence,
+                sum : sum,
+                detune: detune
+          }
+        }
+        return full;
       }
       return "-";
     }
@@ -437,13 +467,13 @@ function Maxim(t) {
 
 
 
-//This is the constructor for our waveform generator. 
+//This is the constructor for our waveform generator.
 Synth = function() {
   var that = this;
   this.phase = 0;
   this.context = context;
   this.node = context.createJavaScriptNode(512, 2, 2);
-  this.node.onaudioprocess = function(audioContext) { 
+  this.node.onaudioprocess = function(audioContext) {
     that.process(audioContext);
     console.log(audioContext.sampleRate);
     };
@@ -493,7 +523,7 @@ Synth.prototype.process = function(audioContext) {
     if (this.phase >= (this.waveFormSize-3) ) this.phase -= (this.waveFormSize-2) ;
     remainder = this.phase - Math.floor(this.phase);
     data[i]=(1-remainder) * this.wave[1+Math.floor(this.phase)] + remainder * this.wave[2+Math.floor(this.phase)];
-  } 
+  }
   //  console.log('data = ' + this.frequency);
 }
 
@@ -569,7 +599,7 @@ SpecPoint = function(){
   this.freq = 0;
   this.value = 0;
   this.first = 0;
-  
+
 };
 
 

@@ -7,6 +7,8 @@
 //If it doesn't appear to work first time, always try refreshing the browser.
 
 
+
+
 Maxim maxim;
 AudioPlayer player;
 float power=0;
@@ -16,97 +18,95 @@ int wait = 0;
 boolean playit = false;
 int xPos = 0;
 boolean logIt = false;
+string full = "";
+var RGBColor;
 void setup() {
   //The size is iPad Portrait.
   //If you want landscape, you should swap the values.
-  // comment out if you are on android! 
-  size(768, 1024); 
+  // comment out if you are on android!
+  size(768, 1024);
   frameRate(20); // this is the framerate. Tweak for performance.
   maxim = new Maxim(this);
-  player = maxim.loadFile("major.wav");
+  player = maxim.loadFile("godsun.mp3");
   player.setLooping(true);
   player.setAnalysing(true);
   rectMode(CENTER);
+  background(0);
+  colorMode(HSB);
 }
- 
+
 void draw() {
-  background(0);   
- 
-  
-//  noFill();
-  
+
   if (playit) {
-    fill(255);
-    player.play(); 
-    power = player.getAveragePower();
-     
-    ellipse(mouseX,mouseY,power*500,power*500);
-    
+
+    player.play();
+    power = map(player.getAveragePower(), 0, 1, 1, 10);
+
+
+    if (power < 0){
+      power *=-1;
+    }
+
     // get the analysis output from the player
     spec = player.getFrequencySpectrum();
-    console.log(player.updatePitch());
-    // we will draw 1x1 pixel dots
-    
-      // iterate over the values in the spectrum, plotting them down the screen
-      var max = {};
-      
-      float maxSpec = -99999999;
-      int maxPos = 0;
-      if (!logIt){
-        var specArray = new Array();
-        var i = 0;
-        
-        for (i=0; i< spec.length; i++) {
-          // set the colour based on the power in this band
-          SpecPoint p = new SpecPoint();
-          p.freq = i;
-          p.value = spec[i];
-          specArray.push(p);
+    string full = player.updatePitch();
+    if (full && full.noteName  ){
+      RGBColor = player.getColorForNote(full.noteName);
+
+        if (full.octave >= 4 && full.octave  <= 5 && full.confidence > 80) {
+          // textSize(32);
+          // text(full.noteName, 10, 30);
+          // fill(0, 102, 153);
         }
-        specArray.sort(function(a,b){
-            //console.log(b,a);
-            return b.value -  a.value ;
-        });
+        else if (full.octave >= 6 && full.octave <= 7 && full.confidence > 96 ){
+          // textSize(32);
+          // text(full.noteName, 10, 30);
+          // fill(10, 0.5);
+          // console.log(full.noteName);
+        }
+        else if (full.octave >=7)
+        {
+          console.log('platos !!' + full.noteName + full.octaveRaw);
+        }
+        else if (full.octave < 6 ){
+            console.log('bombo !!' + full.noteName + full.octaveRaw);
+        }
+        else {
+            console.log(full.octaveRaw +   full.noteName + "@hat?");
+        }
 
-        var peaks = [];
-          for (var p = 0; p < 8; p++) {
-            if (specArray[p]) {
-              var point = specArray[p];
-              point.first =  point.value;
-              peaks.push(point);
-            }
-          }
+    }else {
 
-
-        console.log(peaks[0]);
-        //logIt = true;
-      
+         // console.log(full);
 
     }
-    
+    if (RGBColor){
+      fill(RGBColor.R,RGBColor.G, RGBColor.B);
+      ellipse(mouseX,mouseY,power*100,power*100);
+    }
+
   }
  }
- 
- 
+
+
 
 
 void mousePressed() {
-  
+
     playit = !playit;
-    
+
     if (playit) {
 
-         player.play(); 
- 
+         player.play();
+
     } else {
-     
-     player.stop(); 
-      
+
+     player.stop();
+
     }
-  
+
 }
 
 
 
 
-  
